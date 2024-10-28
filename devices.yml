@@ -46,6 +46,11 @@
     - adaptation-xiaomi-miatoll
     - adaptation-miatoll-configs
 
+.xiaomi_lavender_packages:
+  packages: &xiaomi_lavender_packages
+    - adaptation-droidian-lavender
+    - adaptation-lavender-configs
+    
 ########################################################################
 # Recovery-flashable rootfses                                          #
 ########################################################################
@@ -67,6 +72,7 @@ rootfs:
       only_stable: yes
       packages: *devtools_packages
 
+  
 ########################################################################
 # Device specific images                                               #
 ########################################################################
@@ -160,3 +166,12 @@ xiaomi_miatoll:
   apilevel: 29
 
   packages: *xiaomi_miatoll_packages
+
+# Xiaomi Redmi Note 7 (lavender)
+xiaomi_lavender:
+  type: image
+  arch: arm64
+  edition: phosh
+  variant: phone
+  apilevel: 28
+  packages: *xiaomi_lavender_packages
