@@ -38,7 +38,6 @@ TEMPLATE = """
 {{- $image := or .image (printf "droidian-%%s-%%s-%%s-%%s-api%%d-%%s-%%s_%%s.zip" $mtype $edition $variant $product $apilevel $architecture $version $suffix) -}}
 {{- $output_type := or .output_type "%(output_type)s" -}}
 {{- $use_internal_repository := or .use_internal_repository "%(use_internal_repository)s" -}}
-{{- $droidian_version := or .droidian_version "%(version)s" -}}
 
 architecture: {{ $architecture }}
 actions:
@@ -50,11 +49,11 @@ actions:
 """
 
 TEMPLATE_ONLY_STABLE = """
-{{ if ne $version "next" }}
+{{ if ne $version "nightly" }}
 """
 
 TEMPLATE_ONLY_NIGHTLY = """
-{{ if eq $version "next" }}
+{{ if eq $version "nightly" }}
 """
 
 TEMPLATE_END = """
@@ -75,7 +74,6 @@ TEMPLATE_ENTRYPOINT = """
       image: {{ $image }}
       output_type: {{ $output_type }}
       use_internal_repository: {{ $use_internal_repository }}
-      droidian_version: {{ $droidian_version }}
 """
 
 TEMPLATE_BUNDLE = """
@@ -148,7 +146,7 @@ def generate_recipe_for_product(contents, product, arch, edition, variant, apile
 		"variant" : variant,
 		"apilevel" : int(apilevel),
 		"mtype" : "OFFICIAL" if not IS_COMMUNITY_PORT else "UNOFFICIAL",
-		"version" : os.environ.get("DROIDIAN_VERSION", "next"),
+		"version" : os.environ.get("DROIDIAN_VERSION", "nightly"),
 		"suffix" : datetime.datetime.utcnow().strftime("%Y%m%d"),
 		"output_type" : config["type"],
 		"use_internal_repository" : "yes" if config.get("use_internal_repository", False) else "no",
@@ -158,37 +156,35 @@ def generate_recipe_for_product(contents, product, arch, edition, variant, apile
 	with open(os.path.join(BUILDER_GENERATED_DIRECTORY, "product.yaml"), "w") as f:
 		f.write(TEMPLATE % template_config)
 
-		if config["type"] == "rootfs":
-			if config.get("bundles", []):
-				for bundle in config["bundles"]:
-					write_end = False
-					if bundle["arch"] in ("any", arch) and bundle.get("apilevel", 28) in ("any", int(apilevel)):
-						if bundle.get("only_stable", False):
-							f.write(TEMPLATE_ONLY_STABLE)
-							write_end = True
-						elif bundle.get("only_nightly", False):
-							f.write(TEMPLATE_ONLY_NIGHTLY)
-							write_end = True
+		if config["type"] == "rootfs" and config.get("bundles", []):
+			for bundle in config["bundles"]:
+				write_end = False
+				if bundle["arch"] in ("any", arch) and bundle.get("apilevel", 28) in ("any", int(apilevel)):
+					if bundle.get("only_stable", False):
+						f.write(TEMPLATE_ONLY_STABLE)
+						write_end = True
+					elif bundle.get("only_nightly", False):
+						f.write(TEMPLATE_ONLY_NIGHTLY)
+						write_end = True
 
-						f.write(
-							TEMPLATE_BUNDLE % {
-								"name" : bundle["name"],
-								"architecture" : arch,
-								"packages" : " ".join(bundle["packages"]),
-								"apilevel" : int(apilevel),
-							}
-						)
+					f.write(
+						TEMPLATE_BUNDLE % {
+							"name" : bundle["name"],
+							"architecture" : arch,
+							"packages" : " ".join(bundle["packages"]),
+							"apilevel" : int(apilevel),
+						}
+					)
 
-						if write_end:
-							f.write(TEMPLATE_END)
-
-			if config.get("packages", []):
-				f.write(
-					TEMPLATE_IMAGE_ADAPTATION % {
-						"architecture" : arch,
-						"packages" : " ".join(config["packages"])
-					}
-				)
+					if write_end:
+						f.write(TEMPLATE_END)
+		elif config["type"] == "rootfs" and config.get("packages", []):
+			f.write(
+				TEMPLATE_IMAGE_ADAPTATION % {
+					"architecture" : arch,
+					"packages" : " ".join(config["packages"])
+				}
+			)
 		elif config["type"] == "image":
 			f.write(
 				TEMPLATE_IMAGE_ADAPTATION % {
